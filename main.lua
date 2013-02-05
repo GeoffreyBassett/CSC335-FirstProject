@@ -1,4 +1,4 @@
-require "CiderDebugger";
+
 local widget = require "widget"
 
 local showScreen1 = function (event )
