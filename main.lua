@@ -1,4 +1,3 @@
-require "CiderDebugger";
 
 local widget = require "widget"
 
@@ -17,7 +16,6 @@ local button1 = widget.newButton{
 }
 button1.x = display.contentCenterX
 button1.y = display.contentCenterY
-
 
 local showScreen2 = function (event )
         if event.phase == "release" then
@@ -48,6 +46,3 @@ bg2:setFillColor(0,255,0)
 screen1:insert(bg1)
 screen1:insert(button1)
 screen2:insert(bg2)
-screen2:insert(button2)
-
-
