@@ -1,3 +1,4 @@
+require "CiderDebugger";
 
 local widget = require "widget"
 
