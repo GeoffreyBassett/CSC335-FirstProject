@@ -1,5 +1,5 @@
-local CiderRunMode = {};CiderRunMode.runmode = true;CiderRunMode.sdk = "Corona";CiderRunMode.assertImage = true;CiderRunMode.userdir = "C:/Users/Jeff/AppData/Roaming/.luaglider/dev";local CORONA_SOCKET_PORT=51248;local SOCKET_PORT=51249;local GLIDER_MAIN_FOLDER= "C:/dev/CSC335/FirstProject";
---v1.69
+local CiderRunMode = {};CiderRunMode.runmode = true;CiderRunMode.sdk = "Corona";CiderRunMode.assertImage = true;CiderRunMode.userdir = "C:/Users/Jeff/AppData/Roaming/.luaglider/dev";local CORONA_SOCKET_PORT=51248;local SOCKET_PORT=51249;local GLIDER_MAIN_FOLDER= "C:/dev/CSC335/FirstProject";local useNativePrint= false;
+--v1.70
 -----------------------------------------------------------------------------------------
 --
 -- main.lua
@@ -7,7 +7,7 @@ local CiderRunMode = {};CiderRunMode.runmode = true;CiderRunMode.sdk = "Corona";
 -----------------------------------------------------------------------------------------
 io.stdout:setvbuf("no")
 local json = {}
-function loadJson()
+local function loadJson()
     
     local string = string
     local math = math
@@ -555,6 +555,8 @@ function enterFrame()
     
     --debug.sethook ( debugloop, "crl",0 )
 end
+local accelerometerX, accelerometerY, accelerometerZ = 0,0,0;
+local gyroX, gyroY, gyroZ = 0,0,0;
 if(CiderRunMode.sdk) then
     if(CiderRunMode.sdk=="Corona") then
         timerFunction = timer.performWithDelay;        
@@ -564,6 +566,13 @@ if(CiderRunMode.sdk) then
     elseif (CiderRunMode.sdk == "Moai") then
         systemTime = socket.gettime;
     elseif (CiderRunMode.sdk == "Gideros") then
+        --proxy both accelerometer:getAcceleration() and Gyroscope:getRotationRate()
+        function Accelerometer:getAcceleration()
+            return  accelerometerX, accelerometerY, accelerometerZ
+        end
+        function Gyroscope:getRotationRate()
+            return  gyroX, gyroY, gyroZ
+        end
         systemTime = socket.gettime;
         
     end
@@ -592,12 +601,14 @@ end
 
 local nativePrint = print
 local nativeError = error
+local inc = 0;
 local function sendConsoleMessage(...)
+    inc = inc+1;
     --also send via udp to cider
     --we must break up this message into parts so that it does not get truncated
     local message = {}
     message.type = "pr"
-    local str = ""
+    local str = " "
     for i=1,arg.n do
         str = str..tostring(arg[i]).."\t"
     end
@@ -616,23 +627,28 @@ local function sendConsoleMessage(...)
         message.type = "me"
         message.value = messageString			
         udpSocket:send(json.encode(message))				
-    else
-        
+    else        
         udpSocket:send(messageString)	
     end	
+    
 end
-local function debugPrint(...)
-    nativePrint(...)
-    sendConsoleMessage(...)
+local function debugPrint(...)	
+    if(useNativePrint) then
+        nativePrint(...)
+    else
+        sendConsoleMessage(...)
+    end
 end
 print = debugPrint
 local function debugError(...)
-    nativeError(...)
-    sendConsoleMessage(...)
-    
+    if(useNativePrint) then
+        nativeError(...)
+    else
+        sendConsoleMessage(...)
+    end
 end
 
-error = debugError
+--error = debugError
 --this will block the program initially and wait for netbeans connection
 
 local varRefTable = {} --holds ref to all discovered vars, must remove or leak.
@@ -844,9 +860,9 @@ end
 
 local function writeStackDump() --write the var dump to file
     local stackString = json.encode(stackDump(5));
-    stackDumpFile = io.open(pathToStack,"w") --clear dump
-    stackDumpFile:write( stackString.."\n" )
-    stackDumpFile:close( );
+--    stackDumpFile = io.open(pathToStack,"w") --clear dump
+--    stackDumpFile:write( stackString.."\n" )
+--    stackDumpFile:close( );
     udpSocket:send( json.encode( {["type"]="st",["data"]=stackString} ) )   
     -- stackDump(6);
     --    local Root = {}
@@ -1074,10 +1090,25 @@ processFunctions.sv = function( input )
     end
     writeVariableDump( )
 end
+
 processFunctions.e = function( evt )
     evt = evt.value
-    print( "event recieved",evt.name, evt.xRotation, evt.yRotation, evt.zRotation );
-    Runtime:dispatchEvent( evt );
+    if(CiderRunMode.sdk=="Corona") then
+        Runtime:dispatchEvent( evt );
+    elseif (CiderRunMode.sdk == "Moai") then
+        systemTime = socket.gettime;
+    elseif (CiderRunMode.sdk == "Gideros") then
+        if(evt.name == "accelerometer") then
+            accelerometerX = evt.xGravity;
+            accelerometerY = evt.yGravity;
+            accelerometerZ = evt.zGravity;
+        elseif(evt.name =="gyroscope") then
+            gyroX = evt.xRotation;
+            gyroY = evt.yRotation;
+            gyroZ = evt.zRotation;
+        end
+    end
+    
 end
 processFunctions.k = function( evt )
     --just remove all the breakpoints
@@ -1103,16 +1134,16 @@ local function runloop( phase, lineKey, err )
         --send the error and just stop h
         local message = {}
         message.type = "pe"	
-        message.str = err
-        udpSocket:send( json.encode( message ) )
+        message.str = err.."\n"..(debug.traceback("message",2)) .."\n"      
         
+        udpSocket:send( json.encode( message ) )      
         --    processFunctions.p( ) 			
     end   
     sethook ( runloop, "r",0 ) --errors occur during returns
 end
 
 
-local function debugloop( phase,lineKey,err )
+local function debugloop( phase,lineKey,err)
     sethook ( )	
     ---@class string
     local fileKey = getinfo( 2,"S" ).source 
@@ -1121,16 +1152,17 @@ local function debugloop( phase,lineKey,err )
         --send the error and just stop h
         local message = {}
         message.type = "pe"	
-        message.str = err
+    
+        message.str = err.."\n"..(debug.traceback("message",2)) .."\n"
         udpSocket:send( json.encode( message ) )   
-        processFunctions.p( ) 			
+	processFunctions.p( ) 		
     end
     
---    print("fileKey"..fileKey, fileKey:sub(2,2));
+    --    print("fileKey"..fileKey, fileKey:sub(2,2));
     if( fileKey:sub(2,2) == ".") then
         
         fileKey = GLIDER_MAIN_FOLDER..fileKey:sub(3);
---        print("modifying"..fileKey);
+        --        print("modifying"..fileKey);
     end
     if( fileKey~="=?" and fileKey~="=[C]" ) then
         
@@ -1220,8 +1252,8 @@ local function debugloop( phase,lineKey,err )
                 
                 
                 --we must break up this message into parts so that it does not get truncated
-                logfile:write( json.encode( logMessage ).."\n" )
-                logfile:flush( )
+--                logfile:write( json.encode( logMessage ).."\n" )
+--                logfile:flush( )
                 
                 
             end
@@ -1353,8 +1385,8 @@ local function initBlock( )
     varDumpFile = io.open( pathToVar,"w" )
     varDumpFile:close();
     pathToStack = CiderRunMode.userdir.."/CiderStackDump.dat";
-    stackDumpFile = io.open( pathToStack,"w" )
-    stackDumpFile:close();   
+--    stackDumpFile = io.open( pathToStack,"w" )
+--    stackDumpFile:close();   
     message.type = "s"	
     
     --    message.type = "s"	
@@ -1371,7 +1403,7 @@ local function initBlock( )
     while( keepWaiting ) do
         socket.sleep(0.1)
         if(line and line:len()>3) then
- 
+            
             line = json.decode(line)
             if(line.type=="s") then
                 if(line.snapshot) then
@@ -1382,7 +1414,7 @@ local function initBlock( )
                 end
                 
                 fileFilters = line.filters;                
-                CiderRunMode = line.run
+                
                 startupMode = line.startup;
                 keepWaiting = false
                 break; 
@@ -1391,7 +1423,7 @@ local function initBlock( )
                 processFunctions[line.type](line);--proccess current then the rest		
             end
         else 
-	
+            
             udpSocket:send(json.encode(message));
         end 
         line = udpSocket:receive()		
@@ -1426,7 +1458,6 @@ else
     end
     
 end
-CiderRunMode = nil;
 
 isCorona = nil;
 

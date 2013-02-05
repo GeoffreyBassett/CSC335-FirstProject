@@ -1,3 +1,4 @@
+require "CiderDebugger"
 
 local widget = require "widget"
 
@@ -46,3 +47,4 @@ bg2:setFillColor(0,255,0)
 screen1:insert(bg1)
 screen1:insert(button1)
 screen2:insert(bg2)
+screen2:insert(button2)
