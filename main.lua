@@ -10,7 +10,6 @@ local showScreen1 = function (event )
     end   
 local button1 = widget.newButton{
     label = "To Screen 2",
-    font = "HelveticaNeue-Bold",
     fontSize = 16,
     onRelease = showScreen1,
     defaultX = display.contentCenterX,
@@ -28,7 +27,6 @@ local showScreen2 = function (event )
     end
 local button2 = widget.newButton{
     label = "To Screen 1",
-    font = "HelveticaNeue-Bold",
     fontSize = 16,
     onRelease = showScreen2,
     defaultX = display.contentCenterX,
