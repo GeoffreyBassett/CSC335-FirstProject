@@ -1,10 +1,4 @@
-require "CiderDebugger";-----------------------------------------------------------------------------------------
---
--- main.lua
---
------------------------------------------------------------------------------------------
-
--- Your code here
+require "CiderDebugger";
 local widget = require "widget"
 
 local showScreen1 = function (event )
@@ -12,8 +6,7 @@ local showScreen1 = function (event )
             transition.to(screen1, {time=400, x=display.contentWidth*-1, alpha=0 })
             transition.to(screen2, {time=400, x=0, alpha=1 })
         end
-    end
-    
+    end   
 local button1 = widget.newButton{
     label = "To Screen 2",
     font = "HelveticaNeue-Bold",
@@ -24,14 +17,14 @@ local button1 = widget.newButton{
 }
 button1.x = display.contentCenterX
 button1.y = display.contentCenterY
+
+
 local showScreen2 = function (event )
         if event.phase == "release" then
-            transition.to(screen2, {time=400, x=display.contentWidth-1, transition=easing.linear, alpha=0 })
-            transition.to(screen1, {time=400, x=0, transition=easing.linear, alpha=1 })
+            transition.to(screen2, {time=400, x=display.contentWidth-1, alpha=0 })
+            transition.to(screen1, {time=400, x=0, alpha=1 })
         end
     end
-
-
 local button2 = widget.newButton{
     label = "To Screen 1",
     font = "HelveticaNeue-Bold",
