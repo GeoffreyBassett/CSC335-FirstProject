@@ -9,8 +9,8 @@ local widget = require "widget"
 
 local showScreen1 = function (event )
         if event.phase == "release" then
-            transition.to(screen1, {time=400, x=display.contentWidth*-1, transition=easing.linear, alpha=0 })
-            transition.to(screen2, {time=400, x=0, transition=easing.linear, alpha=1 })
+            transition.to(screen1, {time=400, x=display.contentWidth*-1, alpha=0 })
+            transition.to(screen2, {time=400, x=0, alpha=1 })
         end
     end
     
